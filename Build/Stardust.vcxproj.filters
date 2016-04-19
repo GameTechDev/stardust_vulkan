@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\Src\Framework\stb_image.c">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Src\Framework\Misc.c">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Src\Stardust.c" />
+    <ClCompile Include="..\Src\Framework\Graph.c">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Src\Framework\VKU_Platform.c">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Src\Framework\VKU.c">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Src\Stardust_VK.c" />
+    <ClCompile Include="..\Src\Framework\Metrics.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Src\Framework\stb_image.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\stretchy_buffer.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\Misc.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Stardust.h" />
+    <ClInclude Include="..\Src\Settings.h" />
+    <ClInclude Include="..\Src\Framework\Graph.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\vkFuncList.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\VKU.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\Metrics.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\vectormath_aos.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\vectormath_mat_aos.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\vectormath_quat_aos.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\Framework\vectormath_vec_aos.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Framework">
+      <UniqueIdentifier>{dc5d14cb-2412-4901-a07c-12ec33ba840c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Src\Framework\stb_font_consolas_24_usascii.inl" />
+  </ItemGroup>
+</Project>
