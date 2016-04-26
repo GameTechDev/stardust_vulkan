@@ -167,19 +167,44 @@ int VKU_Alloc_Buffer_Object(VKU_BUFFER_MEMORY_POOL *mempool,
 //-----------------------------------------------------------------------------
 int VKU_Alloc_Image_Object(VKU_IMAGE_MEMORY_POOL *mempool,
     VkImage           image,
-    VkDeviceSize     *offset)
+    VkDeviceSize     *offset,
+	VkMemoryPropertyFlags memprops)
 {
     if (!mempool || !image) LOG_AND_RETURN0();
 
-    VkMemoryRequirements mreq;
-    vkGetImageMemoryRequirements(mempool->device, image, &mreq);
+	VkMemoryRequirements mreq;
+	vkGetImageMemoryRequirements(mempool->device, image, &mreq);
+
+	// Get memory type index for requested memory flags
+	VkPhysicalDeviceMemoryProperties devicememprops;
+	vkGetPhysicalDeviceMemoryProperties(mempool->device, &memprops);
+	uint32_t memtypeindex = 0;
+	for (uint32_t i = 0; i < 32; i++)
+	{
+		if ((mreq.memoryTypeBits & 1) == 1)
+		{
+			if ((devicememprops.memoryTypes[i].propertyFlags & memprops) == memtypeindex)
+			{
+				memtypeindex = i;
+				break;
+			}
+		}
+		mreq.memoryTypeBits >>= 1;
+	}
 
     if (mreq.size > 0) {
         VkDeviceSize off;
         if (!VKU_Alloc_Image_Memory(mempool, mreq.size, mreq.alignment, &off))
             LOG_AND_RETURN0();
 
-        VKU_VR(vkBindImageMemory(mempool->device, image, mempool->memory, off));
+		VkMemoryAllocateInfo mem_alloc;
+		mem_alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		mem_alloc.pNext = NULL;
+		mem_alloc.allocationSize = mreq.size;
+		mem_alloc.memoryTypeIndex = memtypeindex;
+
+		VKU_VR(vkAllocateMemory(mempool->device, &mem_alloc, NULL, &mempool->memory));
+		VKU_VR(vkBindImageMemory(mempool->device, image, mempool->memory, 0));
 
         sb_push(mempool->images, image);
         if (offset) *offset = off;
