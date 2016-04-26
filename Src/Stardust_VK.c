@@ -631,7 +631,7 @@ static int Create_Depth_Stencil(void)
         VK_SHARING_MODE_EXCLUSIVE, 0, NULL, VK_IMAGE_LAYOUT_UNDEFINED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &ds_info, NO_ALLOC_CALLBACK, &s_depth_stencil_image));
-    if (!VKU_Alloc_Image_Object(s_image_mempool_target, s_depth_stencil_image, NULL, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) LOG_AND_RETURN0();
+    if (!VKU_Alloc_Image_Object(s_image_mempool_target, s_depth_stencil_image, NULL, Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))) LOG_AND_RETURN0();
 
     VkComponentMapping channels = {
         VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A 
@@ -1681,7 +1681,7 @@ static int Create_Float_Image_And_Framebuffer(void)
         VK_SHARING_MODE_EXCLUSIVE, 0, NULL, VK_IMAGE_LAYOUT_UNDEFINED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &s_float_image));
-    if (!VKU_Alloc_Image_Object(s_image_mempool_target, s_float_image, NULL, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) LOG_AND_RETURN0();
+    if (!VKU_Alloc_Image_Object(s_image_mempool_target, s_float_image, NULL, Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))) LOG_AND_RETURN0();
 
     VkImageViewCreateInfo image_view = {
         VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0, s_float_image, VK_IMAGE_VIEW_TYPE_2D,
@@ -1717,7 +1717,7 @@ static int Create_Skybox_Image(void)
         NULL, VK_IMAGE_LAYOUT_UNDEFINED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &s_skybox_image));
-    if (!VKU_Alloc_Image_Object(s_image_mempool_texture, s_skybox_image, NULL, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) LOG_AND_RETURN0();
+    if (!VKU_Alloc_Image_Object(s_image_mempool_texture, s_skybox_image, NULL, Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))) LOG_AND_RETURN0();
 
     VkImageViewCreateInfo image_view_info = {
         VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0,
@@ -1741,7 +1741,7 @@ static int Create_Palette_Images(void)
             NULL, VK_IMAGE_LAYOUT_UNDEFINED
         };
         VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &s_palette_image[i]));
-        if (!VKU_Alloc_Image_Object(s_image_mempool_texture, s_palette_image[i], NULL, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) return 0;
+        if (!VKU_Alloc_Image_Object(s_image_mempool_texture, s_palette_image[i], NULL, Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))) return 0;
 
         VkImageViewCreateInfo image_view_info = {
             VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0,

@@ -168,29 +168,12 @@ int VKU_Alloc_Buffer_Object(VKU_BUFFER_MEMORY_POOL *mempool,
 int VKU_Alloc_Image_Object(VKU_IMAGE_MEMORY_POOL *mempool,
     VkImage           image,
     VkDeviceSize     *offset,
-	VkMemoryPropertyFlags memprops)
+	uint32_t          memtypeindex)
 {
     if (!mempool || !image) LOG_AND_RETURN0();
 
 	VkMemoryRequirements mreq;
 	vkGetImageMemoryRequirements(mempool->device, image, &mreq);
-
-	// Get memory type index for requested memory flags
-	VkPhysicalDeviceMemoryProperties devicememprops;
-	vkGetPhysicalDeviceMemoryProperties(mempool->device, &memprops);
-	uint32_t memtypeindex = 0;
-	for (uint32_t i = 0; i < 32; i++)
-	{
-		if ((mreq.memoryTypeBits & 1) == 1)
-		{
-			if ((devicememprops.memoryTypes[i].propertyFlags & memprops) == memtypeindex)
-			{
-				memtypeindex = i;
-				break;
-			}
-		}
-		mreq.memoryTypeBits >>= 1;
-	}
 
     if (mreq.size > 0) {
         VkDeviceSize off;
