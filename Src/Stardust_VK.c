@@ -161,6 +161,7 @@ static int                              s_win_idx;
 static VkDevice                         s_gpu_device;
 static VkQueue                          s_gpu_queue;
 static VkPhysicalDevice                 s_gpu;
+static VkPhysicalDeviceProperties       s_gpu_properties;
 static VkImage                          s_win_images[k_Window_Buffering];
 static VkImageView                      s_win_image_view[k_Window_Buffering];
 static VkFramebuffer                    s_win_framebuffer[k_Window_Buffering];
@@ -2869,6 +2870,7 @@ static int Generate_Text(void)
  
     s_font_letter_count += Add_Text(&ptr, str, 10, s_glob_state->height - 90);
     s_font_letter_count += Add_Text(&ptr, "Stardust 1.1", 10, s_glob_state->height - 60);
+    s_font_letter_count += Add_Text(&ptr, s_gpu_properties.deviceName, 10, s_glob_state->height - 30);
 
     vkUnmapMemory(s_gpu_device, s_font_buffer_mem[s_res_idx]);
 
@@ -2926,6 +2928,8 @@ int VK_Init(struct glob_state_t* state)
         return STARDUST_NOT_SUPPORTED;
     }
     Log("VK Device initialized\n");
+
+	vkGetPhysicalDeviceProperties(s_gpu, &s_gpu_properties);
 
     if (!Demo_Init()) {
         Log("Demo_Init failed\n");
