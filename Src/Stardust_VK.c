@@ -3094,8 +3094,11 @@ int VK_Run(struct glob_state_t *state)
         VKU_DESTROY(vkDestroySemaphore, s_swap_chain_image_ready_semaphore);
     }
 
-    uint32_t swap_image_index = 0xffffffff;
-    VKU_Present(&swap_image_index);
+	if (s_exit_code != STARDUST_EXIT)
+	{
+		uint32_t swap_image_index = 0xffffffff;
+		VKU_Present(&swap_image_index);
+	}
 
     s_res_idx = 0;
     s_win_idx = 0;
