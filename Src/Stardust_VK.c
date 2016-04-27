@@ -161,6 +161,7 @@ static int                              s_win_idx;
 static VkDevice                         s_gpu_device;
 static VkQueue                          s_gpu_queue;
 static VkPhysicalDevice                 s_gpu;
+static VkPhysicalDeviceProperties       s_gpu_properties;
 static VkImage                          s_win_images[k_Window_Buffering];
 static VkImageView                      s_win_image_view[k_Window_Buffering];
 static VkFramebuffer                    s_win_framebuffer[k_Window_Buffering];
@@ -630,7 +631,7 @@ static int Create_Depth_Stencil(void)
         VK_SHARING_MODE_EXCLUSIVE, 0, NULL, VK_IMAGE_LAYOUT_UNDEFINED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &ds_info, NO_ALLOC_CALLBACK, &s_depth_stencil_image));
-    if (!VKU_Alloc_Image_Object(s_image_mempool_target, s_depth_stencil_image, NULL)) LOG_AND_RETURN0();
+    if (!VKU_Alloc_Image_Object(s_image_mempool_target, s_depth_stencil_image, NULL, Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))) LOG_AND_RETURN0();
 
     VkComponentMapping channels = {
         VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A 
@@ -1680,7 +1681,7 @@ static int Create_Float_Image_And_Framebuffer(void)
         VK_SHARING_MODE_EXCLUSIVE, 0, NULL, VK_IMAGE_LAYOUT_UNDEFINED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &s_float_image));
-    if (!VKU_Alloc_Image_Object(s_image_mempool_target, s_float_image, NULL)) LOG_AND_RETURN0();
+    if (!VKU_Alloc_Image_Object(s_image_mempool_target, s_float_image, NULL, Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))) LOG_AND_RETURN0();
 
     VkImageViewCreateInfo image_view = {
         VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0, s_float_image, VK_IMAGE_VIEW_TYPE_2D,
@@ -1716,7 +1717,7 @@ static int Create_Skybox_Image(void)
         NULL, VK_IMAGE_LAYOUT_UNDEFINED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &s_skybox_image));
-    if (!VKU_Alloc_Image_Object(s_image_mempool_texture, s_skybox_image, NULL)) LOG_AND_RETURN0();
+    if (!VKU_Alloc_Image_Object(s_image_mempool_texture, s_skybox_image, NULL, Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))) LOG_AND_RETURN0();
 
     VkImageViewCreateInfo image_view_info = {
         VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0,
@@ -1740,7 +1741,7 @@ static int Create_Palette_Images(void)
             NULL, VK_IMAGE_LAYOUT_UNDEFINED
         };
         VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &s_palette_image[i]));
-        if (!VKU_Alloc_Image_Object(s_image_mempool_texture, s_palette_image[i], NULL)) return 0;
+        if (!VKU_Alloc_Image_Object(s_image_mempool_texture, s_palette_image[i], NULL, Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))) return 0;
 
         VkImageViewCreateInfo image_view_info = {
             VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0,
@@ -1783,61 +1784,92 @@ static int Render_To_Skybox_Image(void)
     };
     VKU_VR(vkCreateFramebuffer(s_gpu_device, &fb_info, NO_ALLOC_CALLBACK, &framebuffer));
 
-    VkImage linear_image;
-    VkImageCreateInfo image_info = {
-        VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, NULL, 0,
-        VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { 1024, 1024, 1 }, 1, 6, VK_SAMPLE_COUNT_1_BIT,
-        VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT, VK_SHARING_MODE_EXCLUSIVE, 0,
-        NULL, VK_IMAGE_LAYOUT_UNDEFINED
-    };
-    VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &linear_image));
+	struct {
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+	} staging_res;
 
-    VkMemoryRequirements mreq = { 0 };
-    vkGetImageMemoryRequirements(s_gpu_device, linear_image, &mreq);
+	VkBufferCreateInfo buffer_info = {
+		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, NULL, 0,
+		1024 * 1024 * 4 * 6,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, 0, NULL
+	};
+	VKU_VR(vkCreateBuffer(s_gpu_device, &buffer_info, NO_ALLOC_CALLBACK, &staging_res.buffer));
 
-    VkDeviceMemory linear_image_mem;
-    VkMemoryAllocateInfo alloc_info = {
-        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mreq.size,
-        Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-    };
-    VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &linear_image_mem));
-    VKU_VR(vkBindImageMemory(s_gpu_device, linear_image, linear_image_mem, 0));
+	VkMemoryRequirements mreq_buffer = { 0 };
+	vkGetBufferMemoryRequirements(s_gpu_device, staging_res.buffer, &mreq_buffer);
 
-    VkImageView linear_image_view;
-    VkImageViewCreateInfo image_view_info = {
-        VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0,
-        linear_image, VK_IMAGE_VIEW_TYPE_2D_ARRAY, VK_FORMAT_R8G8B8A8_UNORM,
-        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A },
-        { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 6 }
-    };
-    VKU_VR(vkCreateImageView(s_gpu_device, &image_view_info, NO_ALLOC_CALLBACK, &linear_image_view));
-
+	VkMemoryAllocateInfo alloc_info_buffer = {
+		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mreq_buffer.size,
+		Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+	};
+	VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info_buffer, NO_ALLOC_CALLBACK, &staging_res.memory));
+	VKU_VR(vkBindBufferMemory(s_gpu_device, staging_res.buffer, staging_res.memory, 0));
 
     uint8_t *ptr;
-    VKU_VR(vkMapMemory(s_gpu_device, linear_image_mem, 0, VK_WHOLE_SIZE, 0, (void **)&ptr));
+    VKU_VR(vkMapMemory(s_gpu_device, staging_res.memory, 0, VK_WHOLE_SIZE, 0, (void **)&ptr));
 
     const char *name[6] = {
         "Data/Texture/Skybox_right1.png", "Data/Texture/Skybox_left2.png",
         "Data/Texture/Skybox_top3.png", "Data/Texture/Skybox_bottom4.png",
         "Data/Texture/Skybox_front5.png", "Data/Texture/Skybox_back6.png"
     };
-    for (int i = 0; i < 6; ++i) {
-        int w, h, comp;
-        stbi_uc *data = Load_Image(name[i], &w, &h, &comp, 4);
-        if (!data) LOG_AND_RETURN0();
 
-        VkImageSubresource sub = { VK_IMAGE_ASPECT_COLOR_BIT, 0, i };
-        VkSubresourceLayout layout;
-        vkGetImageSubresourceLayout(s_gpu_device, linear_image, &sub, &layout);
+	VkDeviceSize offset = 0;
+	VkBufferImageCopy buffer_copy_regions[6] = { 0 };
+	for (int i = 0; i < 6; ++i) {
+		int w, h, comp;
+		stbi_uc *data = Load_Image(name[i], &w, &h, &comp, 4);
+		if (!data) LOG_AND_RETURN0();
 
-        memcpy(ptr + layout.offset, data, w * h * comp);
-        stbi_image_free(data);
-    }
-    vkUnmapMemory(s_gpu_device, linear_image_mem);
+		size_t size = w * h * comp;
+		memcpy(ptr + offset, data, size);
 
+		buffer_copy_regions[i].bufferOffset = offset;
+		buffer_copy_regions[i].imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		buffer_copy_regions[i].imageSubresource.baseArrayLayer = i;
+		buffer_copy_regions[i].imageSubresource.layerCount = 1;
+		buffer_copy_regions[i].imageExtent.width = w;
+		buffer_copy_regions[i].imageExtent.height = h;
+		buffer_copy_regions[i].imageExtent.depth = 1;
+
+		offset += size;
+		stbi_image_free(data);
+	}
+	vkUnmapMemory(s_gpu_device, staging_res.memory);
+
+	VkImage optimal_image;
+	VkImageCreateInfo image_info = {
+		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, NULL, 0,
+		VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM,{ 1024, 1024, 1 }, 1, 6, VK_SAMPLE_COUNT_1_BIT,
+		VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_SHARING_MODE_EXCLUSIVE, 0,
+		NULL, VK_IMAGE_LAYOUT_UNDEFINED
+	};
+
+	VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &optimal_image));
+
+	VkMemoryRequirements mreq_image = { 0 };
+	vkGetImageMemoryRequirements(s_gpu_device, optimal_image, &mreq_image);
+
+	VkDeviceMemory optimal_image_mem;
+	VkMemoryAllocateInfo alloc_info_image = {
+		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mreq_image.size,
+		Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+	};
+	VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info_image, NO_ALLOC_CALLBACK, &optimal_image_mem));
+	VKU_VR(vkBindImageMemory(s_gpu_device, optimal_image, optimal_image_mem, 0));
+
+	VkImageView optimal_image_view;
+	VkImageViewCreateInfo image_view_info = {
+		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0,
+		optimal_image, VK_IMAGE_VIEW_TYPE_2D_ARRAY, VK_FORMAT_R8G8B8A8_UNORM,
+		{ VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A },
+		{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 6 }
+	};
+	VKU_VR(vkCreateImageView(s_gpu_device, &image_view_info, NO_ALLOC_CALLBACK, &optimal_image_view));
     Update_Common_Dset();
     VkDescriptorImageInfo image_sampler_attach = {
-        s_sampler, linear_image_view, VK_IMAGE_LAYOUT_GENERAL
+        s_sampler, optimal_image_view, VK_IMAGE_LAYOUT_GENERAL
     };
 
     VkWriteDescriptorSet update_sampler_font_image = {
@@ -1852,6 +1884,31 @@ static int Render_To_Skybox_Image(void)
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, NULL, 0, NULL
     };
 
+	VkSubmitInfo submit_info;
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.pNext = NULL;
+	submit_info.waitSemaphoreCount = 0;
+	submit_info.pWaitSemaphores = NULL;
+	submit_info.pWaitDstStageMask = NULL;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = s_cmdbuf_display;
+	submit_info.signalSemaphoreCount = 0;
+	submit_info.pSignalSemaphores = NULL;
+
+	VKU_VR(vkBeginCommandBuffer(s_cmdbuf_display[0], &begin_info));
+	vkCmdCopyBufferToImage(s_cmdbuf_display[0], staging_res.buffer, optimal_image, VK_IMAGE_LAYOUT_GENERAL, 6, buffer_copy_regions);
+	VKU_VR(vkEndCommandBuffer(s_cmdbuf_display[0]));
+
+	if (vkQueueSubmit(s_gpu_queue, 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS) {
+		LOG_AND_RETURN0();
+	}
+	if (vkQueueWaitIdle(s_gpu_queue) != VK_SUCCESS) {
+		LOG_AND_RETURN0();
+	}
+	
+	vkFreeMemory(s_gpu_device, staging_res.memory, NULL);
+	vkDestroyBuffer(s_gpu_device, staging_res.buffer, NULL);
+	
     VkImageSubresourceRange image_subresource_range;
     image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_subresource_range.baseMipLevel = 0;
@@ -1868,7 +1925,7 @@ static int Render_To_Skybox_Image(void)
     linear_image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
     linear_image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     linear_image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    linear_image_memory_barrier.image = linear_image;
+    linear_image_memory_barrier.image = optimal_image;
     linear_image_memory_barrier.subresourceRange = image_subresource_range;
 
     VKU_VR(vkBeginCommandBuffer(s_cmdbuf_display[0], &begin_info));
@@ -1917,16 +1974,6 @@ static int Render_To_Skybox_Image(void)
     vkCmdEndRenderPass(s_cmdbuf_display[0]);
     VKU_VR(vkEndCommandBuffer(s_cmdbuf_display[0]));
 
-    VkSubmitInfo submit_info;
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.pNext = NULL;
-    submit_info.waitSemaphoreCount = 0;
-    submit_info.pWaitSemaphores = NULL;
-    submit_info.pWaitDstStageMask = NULL;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = s_cmdbuf_display;
-    submit_info.signalSemaphoreCount = 0;
-    submit_info.pSignalSemaphores = NULL;
     if (vkQueueSubmit(s_gpu_queue, 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS) {
         LOG_AND_RETURN0();
     }
@@ -1934,9 +1981,9 @@ static int Render_To_Skybox_Image(void)
         LOG_AND_RETURN0();
     }
 
-    VKU_DESTROY(vkDestroyImageView, linear_image_view);
-    VKU_DESTROY(vkDestroyImage, linear_image);
-    VKU_FREE_MEM(linear_image_mem);
+    VKU_DESTROY(vkDestroyImageView, optimal_image_view);
+    VKU_DESTROY(vkDestroyImage, optimal_image);
+    VKU_FREE_MEM(optimal_image_mem);
     for (int i = 0; i < 6; ++i) VKU_DESTROY(vkDestroyImageView, image_view[i]);
     VKU_DESTROY(vkDestroyFramebuffer, framebuffer);
 
@@ -1970,79 +2017,130 @@ static int Render_To_Palette_Images(void)
 
     VKU_VR(vkCreateFramebuffer(s_gpu_device, &fb_info, NO_ALLOC_CALLBACK, &framebuffer));
 
-    VkImage linear_image;
-    VkImageCreateInfo image_info = {
-        VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, NULL, 0,
-        VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { 256, 1, 1 }, 1, 6, VK_SAMPLE_COUNT_1_BIT,
-        VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT,
-        VK_SHARING_MODE_EXCLUSIVE, 0, NULL, VK_IMAGE_LAYOUT_UNDEFINED
-    };
-    VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &linear_image));
+	struct {
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+	} staging_res;
 
-    VkMemoryRequirements mreq = { 0 };
-    vkGetImageMemoryRequirements(s_gpu_device, linear_image, &mreq);
+	VkBufferCreateInfo buffer_info = {
+		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, NULL, 0,
+		256 * 4 * 6,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, 0, NULL
+	};
+	VKU_VR(vkCreateBuffer(s_gpu_device, &buffer_info, NO_ALLOC_CALLBACK, &staging_res.buffer));
 
-    VkDeviceMemory linear_image_mem;
-    VkMemoryAllocateInfo alloc_info = {
-        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mreq.size,
-        Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-    };
-    VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &linear_image_mem));
-    VKU_VR(vkBindImageMemory(s_gpu_device, linear_image, linear_image_mem, 0));
+	VkMemoryRequirements mreq_buffer = { 0 };
+	vkGetBufferMemoryRequirements(s_gpu_device, staging_res.buffer, &mreq_buffer);
 
+	VkMemoryAllocateInfo alloc_info_buffer = {
+		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mreq_buffer.size,
+		Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+	};
+	VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info_buffer, NO_ALLOC_CALLBACK, &staging_res.memory));
+	VKU_VR(vkBindBufferMemory(s_gpu_device, staging_res.buffer, staging_res.memory, 0));
 
-    VkImageView linear_image_view;
-    VkImageViewCreateInfo image_view_info = {
-        VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0,
-        linear_image, VK_IMAGE_VIEW_TYPE_2D_ARRAY, VK_FORMAT_R8G8B8A8_UNORM,
-        {
-            VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
-            VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A
-        },
-        { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 6 }
-    };
-    VKU_VR(vkCreateImageView(s_gpu_device, &image_view_info, NO_ALLOC_CALLBACK, &linear_image_view));
+	uint8_t *ptr;
+	VKU_VR(vkMapMemory(s_gpu_device, staging_res.memory, 0, VK_WHOLE_SIZE, 0, (void **)&ptr));
 
-    uint8_t *ptr;
-    VKU_VR(vkMapMemory(s_gpu_device, linear_image_mem, 0, VK_WHOLE_SIZE, 0, (void **)&ptr));
+	const char *name[6] = {
+		"Data/Texture/Palette_Fire.png", "Data/Texture/Palette_Purple.png",
+		"Data/Texture/Palette_Muted.png", "Data/Texture/Palette_Rainbow.png",
+		"Data/Texture/Palette_Sky.png", "Data/Texture/Palette_Sky.png"
+	};
 
-    const char *name[] = {
-        "Data/Texture/Palette_Fire.png", "Data/Texture/Palette_Purple.png",
-        "Data/Texture/Palette_Muted.png", "Data/Texture/Palette_Rainbow.png",
-        "Data/Texture/Palette_Sky.png", "Data/Texture/Palette_Sky.png"
-    };
+	VkDeviceSize offset = 0;
+	VkBufferImageCopy buffer_copy_regions[6] = { 0 };
+	for (int i = 0; i < 6; ++i) {
+		int w, h, comp;
+		stbi_uc *data = Load_Image(name[i], &w, &h, &comp, 4);
+		if (!data) LOG_AND_RETURN0();
 
-    for (int i = 0; i < 6; ++i) {
-        int w, h, comp;
-        stbi_uc *data = Load_Image(name[i], &w, &h, &comp, 4);
-        if (!data) LOG_AND_RETURN0();
+		size_t size = w * h * comp;
+		memcpy(ptr + offset, data, size);
 
-        VkImageSubresource sub = { VK_IMAGE_ASPECT_COLOR_BIT, 0, i };
-        VkSubresourceLayout layout;
-        vkGetImageSubresourceLayout(s_gpu_device, linear_image, &sub, &layout);
+		buffer_copy_regions[i].bufferOffset = offset;
+		buffer_copy_regions[i].imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		buffer_copy_regions[i].imageSubresource.baseArrayLayer = i;
+		buffer_copy_regions[i].imageSubresource.layerCount = 1;
+		buffer_copy_regions[i].imageExtent.width = w;
+		buffer_copy_regions[i].imageExtent.height = h;
+		buffer_copy_regions[i].imageExtent.depth = 1;
 
-        memcpy(ptr + layout.offset, data, w * h * comp);
+		offset += size;
+		stbi_image_free(data);
+	}
+	vkUnmapMemory(s_gpu_device, staging_res.memory);
 
-        stbi_image_free(data);
-    }
-    vkUnmapMemory(s_gpu_device, linear_image_mem);
+	VkImage optimal_image;
+	VkImageCreateInfo image_info = {
+		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, NULL, 0,
+		VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM,{ 256, 1, 1 }, 1, 6, VK_SAMPLE_COUNT_1_BIT,
+		VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_SHARING_MODE_EXCLUSIVE, 0,
+		NULL, VK_IMAGE_LAYOUT_UNDEFINED
+	};
 
-    Update_Common_Dset();
-    VkDescriptorImageInfo image_sampler_attach = {
-        s_sampler, linear_image_view, VK_IMAGE_LAYOUT_GENERAL
-    };
+	VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &optimal_image));
 
-    VkWriteDescriptorSet update_sampler_font_image = {
-        VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, NULL, s_common_dset[s_res_idx],
-        1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &image_sampler_attach,
-        VK_NULL_HANDLE, VK_NULL_HANDLE
-    };
+	VkMemoryRequirements mreq_image = { 0 };
+	vkGetImageMemoryRequirements(s_gpu_device, optimal_image, &mreq_image);
 
-    vkUpdateDescriptorSets(s_gpu_device, 1, &update_sampler_font_image, 0, NULL);
+	VkDeviceMemory optimal_image_mem;
+	VkMemoryAllocateInfo alloc_info_image = {
+		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mreq_image.size,
+		Get_Mem_Type_Index(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+	};
+	VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info_image, NO_ALLOC_CALLBACK, &optimal_image_mem));
+	VKU_VR(vkBindImageMemory(s_gpu_device, optimal_image, optimal_image_mem, 0));
 
-    VkCommandBufferBeginInfo begin_info = {
-        VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, NULL, 0, NULL
-    };
+	VkImageView optimal_image_view;
+	VkImageViewCreateInfo image_view_info = {
+		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, NULL, 0,
+		optimal_image, VK_IMAGE_VIEW_TYPE_2D_ARRAY, VK_FORMAT_R8G8B8A8_UNORM,
+		{ VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A },
+		{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 6 }
+	};
+	VKU_VR(vkCreateImageView(s_gpu_device, &image_view_info, NO_ALLOC_CALLBACK, &optimal_image_view));
+	Update_Common_Dset();
+	VkDescriptorImageInfo image_sampler_attach = {
+		s_sampler, optimal_image_view, VK_IMAGE_LAYOUT_GENERAL
+	};
+
+	VkWriteDescriptorSet update_sampler_font_image = {
+		VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, NULL, s_common_dset[s_res_idx],
+		1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &image_sampler_attach,
+		VK_NULL_HANDLE, VK_NULL_HANDLE
+	};
+
+	vkUpdateDescriptorSets(s_gpu_device, 1, &update_sampler_font_image, 0, NULL);
+
+	VkCommandBufferBeginInfo begin_info = {
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, NULL, 0, NULL
+	};
+
+	VkSubmitInfo submit_info;
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.pNext = NULL;
+	submit_info.waitSemaphoreCount = 0;
+	submit_info.pWaitSemaphores = NULL;
+	submit_info.pWaitDstStageMask = NULL;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = s_cmdbuf_display;
+	submit_info.signalSemaphoreCount = 0;
+	submit_info.pSignalSemaphores = NULL;
+
+	VKU_VR(vkBeginCommandBuffer(s_cmdbuf_display[0], &begin_info));
+	vkCmdCopyBufferToImage(s_cmdbuf_display[0], staging_res.buffer, optimal_image, VK_IMAGE_LAYOUT_GENERAL, 6, buffer_copy_regions);
+	VKU_VR(vkEndCommandBuffer(s_cmdbuf_display[0]));
+
+	if (vkQueueSubmit(s_gpu_queue, 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS) {
+		LOG_AND_RETURN0();
+	}
+	if (vkQueueWaitIdle(s_gpu_queue) != VK_SUCCESS) {
+		LOG_AND_RETURN0();
+	}
+
+	vkFreeMemory(s_gpu_device, staging_res.memory, NULL);
+	vkDestroyBuffer(s_gpu_device, staging_res.buffer, NULL);
 
     VkImageSubresourceRange image_subresource_range;
     image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -2060,7 +2158,7 @@ static int Render_To_Palette_Images(void)
     linear_image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
     linear_image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     linear_image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    linear_image_memory_barrier.image = linear_image;
+    linear_image_memory_barrier.image = optimal_image;
     linear_image_memory_barrier.subresourceRange = image_subresource_range;
 
     VkImageSubresourceRange palette_subresource_range[6];
@@ -2115,16 +2213,6 @@ static int Render_To_Palette_Images(void)
     vkCmdEndRenderPass(s_cmdbuf_display[0]);
     VKU_VR(vkEndCommandBuffer(s_cmdbuf_display[0]));
 
-    VkSubmitInfo submit_info;
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.pNext = NULL;
-    submit_info.waitSemaphoreCount = 0;
-    submit_info.pWaitSemaphores = NULL;
-    submit_info.pWaitDstStageMask = NULL;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = s_cmdbuf_display;
-    submit_info.signalSemaphoreCount = 0;
-    submit_info.pSignalSemaphores = NULL;
     if (vkQueueSubmit(s_gpu_queue, 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS) {
         LOG_AND_RETURN0();
     }
@@ -2132,9 +2220,9 @@ static int Render_To_Palette_Images(void)
         LOG_AND_RETURN0();
     }
 
-    VKU_DESTROY(vkDestroyImageView, linear_image_view);
-    VKU_DESTROY(vkDestroyImage, linear_image);
-    VKU_FREE_MEM(linear_image_mem);
+    VKU_DESTROY(vkDestroyImageView, optimal_image_view);
+    VKU_DESTROY(vkDestroyImage, optimal_image);
+    VKU_FREE_MEM(optimal_image_mem);
     for (int i = 0; i < 6; ++i) VKU_DESTROY(vkDestroyImageView, image_view[i]);
     VKU_DESTROY(vkDestroyFramebuffer, framebuffer);
 
@@ -2869,6 +2957,7 @@ static int Generate_Text(void)
  
     s_font_letter_count += Add_Text(&ptr, str, 10, s_glob_state->height - 90);
     s_font_letter_count += Add_Text(&ptr, "Stardust 1.1", 10, s_glob_state->height - 60);
+    s_font_letter_count += Add_Text(&ptr, s_gpu_properties.deviceName, 10, s_glob_state->height - 30);
 
     vkUnmapMemory(s_gpu_device, s_font_buffer_mem[s_res_idx]);
 
@@ -2908,7 +2997,7 @@ static uint32_t Get_Mem_Type_Index(VkMemoryPropertyFlagBits bit)
     vkGetPhysicalDeviceMemoryProperties(s_gpu, &physMemProperties);
 
     for (uint32_t i = 0; i < physMemProperties.memoryTypeCount; ++i) {
-        if (physMemProperties.memoryTypes[i].propertyFlags & bit || bit == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+        if ((physMemProperties.memoryTypes[i].propertyFlags & bit) == bit) {
             return  i;
         }
     }
@@ -2926,6 +3015,8 @@ int VK_Init(struct glob_state_t* state)
         return STARDUST_NOT_SUPPORTED;
     }
     Log("VK Device initialized\n");
+
+	vkGetPhysicalDeviceProperties(s_gpu, &s_gpu_properties);
 
     if (!Demo_Init()) {
         Log("Demo_Init failed\n");
@@ -3003,8 +3094,11 @@ int VK_Run(struct glob_state_t *state)
         VKU_DESTROY(vkDestroySemaphore, s_swap_chain_image_ready_semaphore);
     }
 
-    uint32_t swap_image_index = 0xffffffff;
-    VKU_Present(&swap_image_index);
+	if (s_exit_code != STARDUST_EXIT)
+	{
+		uint32_t swap_image_index = 0xffffffff;
+		VKU_Present(&swap_image_index);
+	}
 
     s_res_idx = 0;
     s_win_idx = 0;
