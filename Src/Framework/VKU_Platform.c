@@ -123,7 +123,7 @@ static int Init_Device(void)
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.pEngineName        = "Starduster1";
     app_info.engineVersion      = VK_MAKE_VERSION(1, 1, 0);
-    app_info.apiVersion         = VK_API_VERSION;
+    app_info.apiVersion         = VK_VERSION_1_0;
 
     const char* wsi_extensions[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,

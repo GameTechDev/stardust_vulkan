@@ -24,6 +24,7 @@
 #define VK_KHR_PLATFORM_SPECIFIC_SURFACE_EXTENSION_NAME VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
 #endif
 
+#define VK_NO_PROTOTYPES
 #include "vulkan.h"
 #include "Misc.h"
 
