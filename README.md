@@ -4,6 +4,6 @@ The Stardust sample application uses the Vulkan graphics API to efficiently rend
 
 # Requirements
 <ul>
-<li>Visual Studio 2013 for building from source code (pre-built x64 binaries included).
+<li>Visual Studio 2017 for building from source code (pre-built x64 binaries included).
 <li>Vulkan capable hardware and drivers. For instance, Intel HD Graphics 520 or newer.
 </ul>
