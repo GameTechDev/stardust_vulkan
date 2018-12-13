@@ -131,6 +131,8 @@ static int                            Release_Particle_Thread(THREAD_DATA *thrd)
 static int                            Update_Particle_Thread(THREAD_DATA *thrd);
 static int                            SDLCALL Particle_Thread(void *data);
 static void                           Cmd_Clear(VkCommandBuffer cmdbuf);
+static void                           Cmd_Begin_Win_RenderPass(VkCommandBuffer cmdbuf);
+static void                           Cmd_End_Win_RenderPass(VkCommandBuffer cmdbuf);
 static void                           Cmd_Display_Fractal(VkCommandBuffer cmdbuf);
 static void                           Cmd_Render_Skybox(VkCommandBuffer cmdbuf);
 //-----------------------------------------------------------------------------
@@ -507,11 +509,13 @@ static int Demo_Update(void)
     VKU_VR(vkEndCommandBuffer(s_cmdbuf_clear[s_res_idx]));
 
     VKU_VR(vkBeginCommandBuffer(s_cmdbuf_display[s_res_idx], &begin_info));
+    Cmd_Begin_Win_RenderPass(s_cmdbuf_display[s_res_idx]);
     Cmd_Display_Fractal(s_cmdbuf_display[s_res_idx]);
     for (int i = 0; i < s_glob_state->cpu_core_count; ++i) {
         Graph_Draw(&s_graph[i], s_cmdbuf_display[s_res_idx]);
     }
     Cmd_Draw_Text(s_cmdbuf_display[s_res_idx]);
+    Cmd_End_Win_RenderPass(s_cmdbuf_display[s_res_idx]);
     VKU_VR(vkEndCommandBuffer(s_cmdbuf_display[s_res_idx]));
 
 #ifdef MT_UPDATE
@@ -2444,11 +2448,8 @@ static void Cmd_Clear(VkCommandBuffer cmdbuf)
                                 &ds_value, 2, depth_stencil_range);
 }
 //=============================================================================
-static void Cmd_Display_Fractal(VkCommandBuffer cmdbuf)
+static void Cmd_Begin_Win_RenderPass(VkCommandBuffer cmdbuf)
 {
-    VkCommandBufferBeginInfo begin_info = {
-        VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, NULL, 0, NULL
-    };
 
     VkRect2D render_area = { { 0, 0 }, { s_glob_state->width, s_glob_state->height } };
     VkClearValue clear_color = { 0 };
@@ -2461,13 +2462,20 @@ static void Cmd_Display_Fractal(VkCommandBuffer cmdbuf)
     rpBegin.clearValueCount = 2;
     rpBegin.pClearValues = &clear_color;
     vkCmdBeginRenderPass(cmdbuf, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+}
+//=============================================================================
+static void Cmd_End_Win_RenderPass(VkCommandBuffer cmdbuf)
+{
+    vkCmdEndRenderPass(cmdbuf);
+}
+//=============================================================================
+static void Cmd_Display_Fractal(VkCommandBuffer cmdbuf)
+{
 
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s_display_pipe);
     vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s_common_pipeline_layout, 0, 1, &s_common_dset[s_res_idx], 0, NULL);
 
     vkCmdDraw(cmdbuf, 4, 1, 0, 0);
-
-    vkCmdEndRenderPass(cmdbuf);
 }
 //=============================================================================
 static void Cmd_Render_Skybox(VkCommandBuffer cmdbuf)
@@ -2569,17 +2577,6 @@ static void Graph_Draw(GRAPH *graph, VkCommandBuffer cmdbuf)
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, NULL, 0, NULL
     };
 
-    VkRect2D render_area = { { 0, 0 }, { s_glob_state->width, s_glob_state->height } };
-    VkClearValue clear_color = { 0 };
-    VkRenderPassBeginInfo rpBegin;
-    rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpBegin.pNext = NULL;
-    rpBegin.renderPass = s_win_renderpass;
-    rpBegin.framebuffer = s_win_framebuffer[s_win_idx];
-    rpBegin.renderArea = render_area;
-    rpBegin.clearValueCount = 2;
-    rpBegin.pClearValues = &clear_color;
-    vkCmdBeginRenderPass(cmdbuf, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
     VkDeviceSize offset = 0;
 
     if (graph->draw_background) {
@@ -2613,8 +2610,6 @@ static void Graph_Draw(GRAPH *graph, VkCommandBuffer cmdbuf)
     vkCmdBindVertexBuffers(cmdbuf, 0, 1, &graph->buffer[s_res_idx], &offset);
     vkCmdBindVertexBuffers(cmdbuf, 1, 1, &graph->buffer[s_res_idx], &offset);
     vkCmdDraw(cmdbuf, k_Graph_Samples, 1, k_Graph_Samples * 2, 0);
-
-    vkCmdEndRenderPass(cmdbuf);
 }
 //-----------------------------------------------------------------------------
 static int Graph_Update_Buffer(GRAPH *graph, struct graph_data_t* data)
@@ -3008,18 +3003,6 @@ static int Generate_Text(void)
 //-----------------------------------------------------------------------------
 static void Cmd_Draw_Text(VkCommandBuffer cmdbuf)
 {
-    VkRect2D render_area = { { 0, 0 }, { s_glob_state->width, s_glob_state->height } };
-    VkClearValue clear_color = { 0 };
-    VkRenderPassBeginInfo rpBegin;
-    rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpBegin.pNext = NULL;
-    rpBegin.renderPass = s_win_renderpass;
-    rpBegin.framebuffer = s_win_framebuffer[s_win_idx];
-    rpBegin.renderArea = render_area;
-    rpBegin.clearValueCount = 2;
-    rpBegin.pClearValues = &clear_color;
-    vkCmdBeginRenderPass(cmdbuf, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
-
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s_font_pipe);
     vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s_common_pipeline_layout, 0, 1, &s_common_dset[s_res_idx], 0, NULL);
 
@@ -3029,8 +3012,6 @@ static void Cmd_Draw_Text(VkCommandBuffer cmdbuf)
     for (int i = 0; i < s_font_letter_count; ++i) {
         vkCmdDraw(cmdbuf, 4, 1, i * 4, 0);
     }
-
-    vkCmdEndRenderPass(cmdbuf);
 }
 //-----------------------------------------------------------------------------
 static uint32_t Get_Mem_Type_Index(VkMemoryPropertyFlagBits bit)
