@@ -633,7 +633,7 @@ static int Create_Depth_Stencil(void)
     VkImageCreateInfo ds_info = {
         VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, NULL, 0, VK_IMAGE_TYPE_2D,
         VK_FORMAT_D24_UNORM_S8_UINT, { s_glob_state->width, s_glob_state->height, 1 }, 1, 1, VK_SAMPLE_COUNT_1_BIT,
-        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         VK_SHARING_MODE_EXCLUSIVE, 0, NULL, VK_IMAGE_LAYOUT_UNDEFINED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &ds_info, NO_ALLOC_CALLBACK, &s_depth_stencil_image));
@@ -1683,7 +1683,7 @@ static int Create_Float_Image_And_Framebuffer(void)
     VkImageCreateInfo image_info = {
         VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, NULL, 0, VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM,
         { s_glob_state->width, s_glob_state->height, 1 }, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         VK_SHARING_MODE_EXCLUSIVE, 0, NULL, VK_IMAGE_LAYOUT_UNDEFINED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &s_float_image));
@@ -1716,7 +1716,7 @@ static int Create_Float_Image_And_Framebuffer(void)
 static int Create_Skybox_Image(void)
 {
     VkImageCreateInfo image_info = {
-        VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, NULL, 0,
+        VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, NULL, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
         VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { 1024, 1024, 1 }, 1, 6, VK_SAMPLE_COUNT_1_BIT,
         VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT |
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SHARING_MODE_EXCLUSIVE, 0,

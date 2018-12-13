@@ -290,7 +290,7 @@ static int Init_Framebuffer(void *hwnd, int width, int height, VkBool32 windowed
     create_info.imageExtent.width = (int32_t)width;
     create_info.imageExtent.height = (int32_t)height;
     create_info.imageArrayLayers = 1;
-    create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     create_info.queueFamilyIndexCount = 1;
     create_info.pQueueFamilyIndices = &s_queue_family_index;
