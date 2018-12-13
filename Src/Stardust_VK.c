@@ -808,12 +808,15 @@ static int Create_Constant_Memory(void)
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, 0, NULL
     };
     VkMemoryAllocateInfo alloc_info = {
-        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, VKU_PAGE_SIZE,
+        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, 0,
         Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
     };
 
     for (int i = 0; i < k_Resource_Buffering; ++i) {
         VKU_VR(vkCreateBuffer(s_gpu_device, &buffer_info, NO_ALLOC_CALLBACK, &s_constant_buf[i]));
+        VkMemoryRequirements mem_reqs;
+        vkGetBufferMemoryRequirements(s_gpu_device, s_constant_buf[i], &mem_reqs);
+        alloc_info.allocationSize = mem_reqs.size;
         VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &s_constant_mem[i]));
         VKU_VR(vkBindBufferMemory(s_gpu_device, s_constant_buf[i], s_constant_mem[i], 0));
     }
@@ -829,9 +832,15 @@ static int Create_Particles(void)
     };
     VKU_VR(vkCreateBuffer(s_gpu_device, &buffer_info, NO_ALLOC_CALLBACK, &s_particle_seed_buf));
 
+    VkMemoryRequirements mem_reqs;
+    vkGetBufferMemoryRequirements(s_gpu_device, s_particle_seed_buf, &mem_reqs);
+    if (mem_reqs.size < s_glob_state->point_count * sizeof(uint32_t))
+    {
+        return 0;
+    }
     VkMemoryAllocateInfo alloc_info = {
         VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL,
-        VKU_ALIGN_PAGE(s_glob_state->point_count * sizeof(uint32_t)),
+        mem_reqs.size,
         Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
     };
     VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &s_particle_seed_mem));
@@ -866,8 +875,14 @@ static int Create_Skybox_Geometry(void)
     };
     VKU_VR(vkCreateBuffer(s_gpu_device, &buffer_info, NO_ALLOC_CALLBACK, &s_skybox_buf));
 
+    VkMemoryRequirements mem_reqs;
+    vkGetBufferMemoryRequirements(s_gpu_device, s_skybox_buf, &mem_reqs);
+    if (mem_reqs.size < size)
+    {
+        return 0;
+    }
     VkMemoryAllocateInfo alloc_info = {
-        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, VKU_ALIGN_PAGE(size),
+        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mem_reqs.size,
         Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
     };
     VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &s_skybox_mem));
@@ -1928,7 +1943,7 @@ static int Render_To_Skybox_Image(void)
     linear_image_memory_barrier.pNext = NULL;
     linear_image_memory_barrier.srcAccessMask = 0;
     linear_image_memory_barrier.dstAccessMask = 0;
-    linear_image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    linear_image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     linear_image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
     linear_image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     linear_image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -2161,7 +2176,7 @@ static int Render_To_Palette_Images(void)
     linear_image_memory_barrier.pNext = NULL;
     linear_image_memory_barrier.srcAccessMask = 0;
     linear_image_memory_barrier.dstAccessMask = 0;
-    linear_image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    linear_image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     linear_image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
     linear_image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     linear_image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -2504,8 +2519,10 @@ static int Graph_Init(GRAPH *graph, struct graph_data_t *data, int x, int y, int
         };
         VKU_VR(vkCreateBuffer(s_gpu_device, &buffer_info, NO_ALLOC_CALLBACK, &graph->buffer[i]));
 
+        VkMemoryRequirements mem_reqs;
+        vkGetBufferMemoryRequirements(s_gpu_device, graph->buffer[i], &mem_reqs);
         VkMemoryAllocateInfo alloc_info = {
-            VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, VKU_ALIGN_PAGE(size),
+            VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mem_reqs.size,
             Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
         };
         VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &graph->buffer_mem[i]));
@@ -2591,7 +2608,7 @@ static void Graph_Draw(GRAPH *graph, VkCommandBuffer cmdbuf)
 static int Graph_Update_Buffer(GRAPH *graph, struct graph_data_t* data)
 {
     GRAPH_SHADER_IN *ptr;
-    VKU_VR(vkMapMemory(s_gpu_device, graph->buffer_mem[s_res_idx], 0, VKU_ALIGN_PAGE(64 * sizeof(GRAPH_SHADER_IN)), 0, (void **)&ptr));
+    VKU_VR(vkMapMemory(s_gpu_device, graph->buffer_mem[s_res_idx], 0, VK_WHOLE_SIZE, 0, (void **)&ptr));
 
     // fill
     int idx = data->sampleidx;
@@ -2641,8 +2658,10 @@ static int Create_Common_Graph_Resources(void)
         };
         VKU_VR(vkCreateBuffer(s_gpu_device, &buffer_info, NO_ALLOC_CALLBACK, &s_graph_buffer[i]));
 
+        VkMemoryRequirements mem_reqs;
+        vkGetBufferMemoryRequirements(s_gpu_device, s_graph_buffer[i], &mem_reqs);
         VkMemoryAllocateInfo alloc_info = {
-            VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, VKU_ALIGN_PAGE(size),
+            VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mem_reqs.size,
             Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
         };
         VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &s_graph_buffer_mem[i]));
@@ -2655,7 +2674,7 @@ static int Create_Common_Graph_Resources(void)
 static int Update_Common_Graph_Resources(void)
 {
     GRAPH_SHADER_IN *ptr;
-    VKU_VR(vkMapMemory(s_gpu_device, s_graph_buffer_mem[s_res_idx], 0, VKU_ALIGN_PAGE(64 * sizeof(GRAPH_SHADER_IN)), 0, (void **)&ptr));
+    VKU_VR(vkMapMemory(s_gpu_device, s_graph_buffer_mem[s_res_idx], 0, VK_WHOLE_SIZE, 0, (void **)&ptr));
 
     // background
     ptr->p.x = -1.0f; ptr->p.y = -1.0f;
@@ -2764,9 +2783,11 @@ static int Create_Font_Resources(void)
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, 0, NULL
         };
         VKU_VR(vkCreateBuffer(s_gpu_device, &buffer_info, NO_ALLOC_CALLBACK, &s_font_buffer[i]));
+        VkMemoryRequirements mem_reqs;
+        vkGetBufferMemoryRequirements(s_gpu_device, s_font_buffer[i], &mem_reqs);
 
         VkMemoryAllocateInfo alloc_info = {
-            VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, VKU_ALIGN_PAGE(size),
+            VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL, mem_reqs.size,
             Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
         };
         VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &s_font_buffer_mem[i]));
@@ -2778,13 +2799,15 @@ static int Create_Font_Resources(void)
         VK_IMAGE_TYPE_2D, VK_FORMAT_R8_UNORM,
         { STB_FONT_consolas_24_usascii_BITMAP_WIDTH, STB_FONT_consolas_24_usascii_BITMAP_HEIGHT, 1 },
         1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT, VK_SHARING_MODE_EXCLUSIVE, 0,
-        NULL, VK_IMAGE_LAYOUT_UNDEFINED
+        NULL, VK_IMAGE_LAYOUT_PREINITIALIZED
     };
     VKU_VR(vkCreateImage(s_gpu_device, &image_info, NO_ALLOC_CALLBACK, &s_font_image));
 
+    VkMemoryRequirements mem_reqs;
+    vkGetImageMemoryRequirements(s_gpu_device, s_font_image, &mem_reqs);
     VkMemoryAllocateInfo alloc_info = {
         VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, NULL,
-        VKU_ALIGN_PAGE(STB_FONT_consolas_24_usascii_BITMAP_WIDTH * 128),
+        mem_reqs.size,
         Get_Mem_Type_Index(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
     };
     VKU_VR(vkAllocateMemory(s_gpu_device, &alloc_info, NO_ALLOC_CALLBACK, &s_font_image_mem));
@@ -2802,7 +2825,7 @@ static int Create_Font_Resources(void)
     VKU_VR(vkCreateImageView(s_gpu_device, &image_view_info, NO_ALLOC_CALLBACK, &s_font_image_view));
 
     unsigned char *ptr;
-    VKU_VR(vkMapMemory(s_gpu_device, s_font_image_mem, 0, VKU_ALIGN_PAGE(STB_FONT_consolas_24_usascii_BITMAP_WIDTH * 128), 0, (void **)&ptr));
+    VKU_VR(vkMapMemory(s_gpu_device, s_font_image_mem, 0, VK_WHOLE_SIZE, 0, (void **)&ptr));
     memcpy(ptr, &font24pixels[0][0], STB_FONT_consolas_24_usascii_BITMAP_WIDTH * STB_FONT_consolas_24_usascii_BITMAP_HEIGHT);
     vkUnmapMemory(s_gpu_device, s_font_image_mem);
 
@@ -2954,7 +2977,7 @@ static int Generate_Text(void)
     s_font_letter_count = 0;
 
     VmathVector4 *ptr;
-    VKU_VR(vkMapMemory(s_gpu_device, s_font_buffer_mem[s_res_idx], 0, VKU_ALIGN_PAGE(1024 * sizeof(VmathVector4)), 0, (void **)&ptr));
+    VKU_VR(vkMapMemory(s_gpu_device, s_font_buffer_mem[s_res_idx], 0, VK_WHOLE_SIZE, 0, (void **)&ptr));
 
     char str[128];
     sprintf(str, "CPU Load");
