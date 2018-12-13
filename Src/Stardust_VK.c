@@ -267,7 +267,7 @@ static int Demo_Init(void)
     VkCommandPoolCreateInfo command_pool_info;
     command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     command_pool_info.pNext = NULL;
-    command_pool_info.flags = 0;
+    command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     command_pool_info.queueFamilyIndex = s_queue_family_index;
     VKU_VR(vkCreateCommandPool(s_gpu_device, &command_pool_info, NO_ALLOC_CALLBACK, &s_command_pool));
 
@@ -541,12 +541,13 @@ static int Demo_Update(void)
 
     VKU_VR(vkResetFences(s_gpu_device, 1, &s_fence[s_res_idx]));
 
+    VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_HOST_BIT };
     VkSubmitInfo submit_info;
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.pNext = NULL;
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = &s_swap_chain_image_ready_semaphore;
-    submit_info.pWaitDstStageMask = NULL;
+    submit_info.pWaitDstStageMask = wait_stages;
     submit_info.commandBufferCount = cmdbuf_count;
     submit_info.pCommandBuffers = cmdbuf;
     submit_info.signalSemaphoreCount = 0;
@@ -2240,7 +2241,7 @@ static int Init_Particle_Thread(THREAD_DATA *thrd)
     VkCommandPoolCreateInfo command_pool_info;
     command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     command_pool_info.pNext = NULL;
-    command_pool_info.flags = 0;
+    command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     command_pool_info.queueFamilyIndex = s_queue_family_index;
     VKU_VR(vkCreateCommandPool(s_gpu_device, &command_pool_info, NO_ALLOC_CALLBACK, &thrd->cmdpool));
 
