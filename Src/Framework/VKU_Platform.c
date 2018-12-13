@@ -199,6 +199,9 @@ static int Init_Device(void)
     queue_info.queueCount = 1;
     queue_info.pQueuePriorities = &queuePriority;
 
+    VkPhysicalDeviceFeatures feature_info = { 0 };
+    feature_info.vertexPipelineStoresAndAtomics = VK_TRUE;
+
     VkDeviceCreateInfo device_info = { 0 };
     device_info.sType                       = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_info.pNext                       = NULL;
@@ -209,7 +212,7 @@ static int Init_Device(void)
     device_info.ppEnabledLayerNames         = NULL;
     device_info.enabledExtensionCount       = SDL_arraysize(extensions);
     device_info.ppEnabledExtensionNames     = extensions;
-    device_info.pEnabledFeatures            = NULL;
+    device_info.pEnabledFeatures            = &feature_info;
 
     VKU_VR(vkCreateDevice(s_gpu, &device_info, NO_ALLOC_CALLBACK, &s_device));
 
