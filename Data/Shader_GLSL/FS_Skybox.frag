@@ -14,9 +14,9 @@
 // under the License.
 ////////////////////////////////////////////////////////////////////////////////
 
-#version 430 core
+#version 450 core
 
-in INVOCATION
+layout(location = 0) in INVOCATION
 {
   vec3 texcoord;
 } fs_in;

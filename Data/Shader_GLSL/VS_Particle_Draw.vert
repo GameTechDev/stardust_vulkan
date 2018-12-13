@@ -14,7 +14,7 @@
 // under the License.
 ////////////////////////////////////////////////////////////////////////////////
 
-#version 430 core
+#version 450 core
 
 layout(location = 0) in uint vs_in_seed;
 
@@ -28,9 +28,10 @@ layout(binding = 0, std430) readonly buffer CONSTANT
 out gl_PerVertex
 {
   vec4 gl_Position;
+  float gl_PointSize;
 };
 
-out INVOCATION
+layout(location = 0) out INVOCATION
 {
   float texcoord;
 } vs_out;
@@ -145,5 +146,6 @@ void main(void)
   }
 
   gl_Position = g_constant.viewproj * p;
+  gl_PointSize = 1.0;
   vs_out.texcoord = c;
 }

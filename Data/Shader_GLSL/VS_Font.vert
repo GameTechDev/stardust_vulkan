@@ -14,7 +14,7 @@
 // under the License.
 ////////////////////////////////////////////////////////////////////////////////
 
-#version 430 core
+#version 450 core
 
 layout(location = 0) in vec2 vs_in_vertex;
 layout(location = 1) in vec2 vs_in_texcoord;
@@ -24,9 +24,9 @@ out gl_PerVertex
   vec4 gl_Position;
 };
 
-out INVOCATION
+layout(location = 0) out INVOCATION
 {
-  vec2 texcoord;
+	vec2 texcoord;
 } vs_out;
 
 void main(void)

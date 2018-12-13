@@ -14,11 +14,11 @@
 // under the License.
 ////////////////////////////////////////////////////////////////////////////////
 
-#version 430 core
+#version 450 core
 
-in INVOCATION
+layout(location = 0) in INVOCATION
 {
-  vec2 texcoord;
+	vec2 texcoord;
 } fs_in;
 
 layout(binding = 1) uniform sampler2DArray g_src_texture;

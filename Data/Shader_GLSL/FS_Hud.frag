@@ -14,11 +14,11 @@
 // under the License.
 ////////////////////////////////////////////////////////////////////////////////
 
-#version 430 core
+#version 450 core
 
 precision highp float;
 
-in INVOCATION
+layout(location = 0) in INVOCATION
 {
   vec2 texcoord;
 } fs_in;

@@ -14,13 +14,13 @@
 // under the License.
 ////////////////////////////////////////////////////////////////////////////////
 
-#version 430 core
+#version 450 core
 
 out gl_PerVertex
 {
   vec4 gl_Position;
 };
-out INVOCATION
+layout(location = 0) out INVOCATION
 {
   vec2 texcoord;
 } vs_out;

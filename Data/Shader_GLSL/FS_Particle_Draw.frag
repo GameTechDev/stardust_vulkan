@@ -8,9 +8,9 @@
 // Intel does not assume any responsibility for any errors which may appear in this software
 // nor any responsibility to update it.
 
-#version 430 core
+#version 450 core
 
-in INVOCATION
+layout(location = 0) in INVOCATION
 {
   float texcoord;
 } fs_in;
