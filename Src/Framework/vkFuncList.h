@@ -59,6 +59,11 @@ VK_FUNCTION(vkGetPhysicalDeviceXcbPresentationSupportKHR);
 // VK_KHR_android_surface
 VK_FUNCTION(vkCreateAndroidSurfaceKHR);
 #endif
+
+#if ENABLE_DEBUG_REPORT
+VK_FUNCTION(vkCreateDebugReportCallbackEXT);
+VK_FUNCTION(vkDestroyDebugReportCallbackEXT);
+#endif
 #endif
 
 #if defined(_VK_DEVICE_FUNCTIONS) || defined(_VK_ALL_FUNCTIONS)

@@ -43,6 +43,9 @@ static uint32_t            s_queue_family_index = 0;
 static VkSwapchainKHR      s_swap_chain = { VK_NULL_HANDLE };
 static int                 s_back_buffer = 0;
 static VkSurfaceKHR        s_surface = VK_NULL_HANDLE;
+#if ENABLE_DEBUG_REPORT
+static VkDebugReportCallbackEXT s_callback = VK_NULL_HANDLE;
+#endif
 //=============================================================================
 static void *Loader(const char *func)
 {
@@ -52,6 +55,14 @@ static void *Loader(const char *func)
     return GetProcAddress(s_vk_dll, func);
 #endif
 }
+//=============================================================================
+#if ENABLE_DEBUG_REPORT
+VkBool32 VKAPI_CALL DebugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+{
+    Log("DebugReportCallback: %s", pMessage);
+    return 0;
+}
+#endif
 //=============================================================================
 static int Init(void *hwnd, int width, int height, VkBool32 windowed,
                 uint32_t image_count, VkImage *images)
@@ -92,6 +103,13 @@ static void Deinit(void)
         vkDestroyDevice(s_device, NO_ALLOC_CALLBACK);
         s_device = VK_NULL_HANDLE;
     }
+#if ENABLE_DEBUG_REPORT
+    if (s_callback)
+    {
+        vkDestroyDebugReportCallbackEXT(s_instance, s_callback, NO_ALLOC_CALLBACK);
+        s_callback = VK_NULL_HANDLE;
+    }
+#endif
     if (s_instance) {
         vkDestroyInstance(s_instance, NO_ALLOC_CALLBACK);
         s_instance = VK_NULL_HANDLE;
@@ -117,9 +135,12 @@ static int Init_Instance(void)
     app_info.engineVersion      = VK_MAKE_VERSION(1, 1, 0);
     app_info.apiVersion         = VK_API_VERSION_1_0;
 
-    const char* wsi_extensions[] = {
+    const char* instance_extensions[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_PLATFORM_SPECIFIC_SURFACE_EXTENSION_NAME
+        VK_KHR_PLATFORM_SPECIFIC_SURFACE_EXTENSION_NAME,
+#if ENABLE_DEBUG_REPORT
+        VK_EXT_DEBUG_REPORT_EXTENSION_NAME
+#endif
     };
 
     VkInstanceCreateInfo instance_info = { 0 };
@@ -129,8 +150,8 @@ static int Init_Instance(void)
     instance_info.pApplicationInfo = &app_info;
     instance_info.enabledLayerCount = 0;
     instance_info.ppEnabledLayerNames = NULL;
-    instance_info.enabledExtensionCount = SDL_arraysize(wsi_extensions);
-    instance_info.ppEnabledExtensionNames = wsi_extensions;
+    instance_info.enabledExtensionCount = SDL_arraysize(instance_extensions);
+    instance_info.ppEnabledExtensionNames = instance_extensions;
 
     VKU_VR(vkCreateInstance(&instance_info, NO_ALLOC_CALLBACK, &s_instance));
     return 1;
@@ -138,6 +159,15 @@ static int Init_Instance(void)
 //=============================================================================
 static int Init_Device(void)
 {
+#if ENABLE_DEBUG_REPORT
+    VkDebugReportCallbackCreateInfoEXT debug_report_info = { 0 };
+    debug_report_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+    debug_report_info.pNext = NULL;
+    debug_report_info.flags = (VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT);
+    debug_report_info.pfnCallback = &DebugReportCallback;
+    debug_report_info.pUserData = NULL;
+    VKU_VR(vkCreateDebugReportCallbackEXT(s_instance, &debug_report_info, NO_ALLOC_CALLBACK, &s_callback));
+#endif
 
     uint32_t count = 1;
     VKU_VR(vkEnumeratePhysicalDevices(s_instance, &count, &s_gpu));
