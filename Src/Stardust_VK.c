@@ -958,8 +958,8 @@ static int Create_Skybox_Pipeline(void)
     vs = VK_NULL_HANDLE;
     fs = VK_NULL_HANDLE;
 
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Skybox.bil", &vs);
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Skybox.bil", &fs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Skybox.spv", &vs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Skybox.spv", &fs);
 
     if (vs == VK_NULL_HANDLE || fs == VK_NULL_HANDLE)
     {
@@ -1050,7 +1050,7 @@ static int Create_Skybox_Generate_Pipeline(void)
 {
     VkShaderModule cs;
     cs = VK_NULL_HANDLE;
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/CS_Skybox_Generate.bil", &cs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/CS_Skybox_Generate.spv", &cs);
 
     if (cs == VK_NULL_HANDLE)
     {
@@ -1089,8 +1089,8 @@ static int Create_Particle_Pipeline(void)
     vs = VK_NULL_HANDLE;
     fs = VK_NULL_HANDLE;
 
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Particle_Draw.bil", &vs);
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Particle_Draw.bil", &fs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Particle_Draw.spv", &vs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Particle_Draw.spv", &fs);
 
     if (vs == VK_NULL_HANDLE || fs == VK_NULL_HANDLE)
     {
@@ -1232,8 +1232,8 @@ static int Create_Display_Pipeline(void)
     vs = VK_NULL_HANDLE;
     fs = VK_NULL_HANDLE;
 
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Quad_UL.bil", &vs);
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Display.bil", &fs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Quad_UL.spv", &vs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Display.spv", &fs);
 
     if (vs == VK_NULL_HANDLE || fs == VK_NULL_HANDLE)
     {
@@ -1375,8 +1375,8 @@ static int Create_Copy_Pipeline(void)
     vs = VK_NULL_HANDLE;
     fs = VK_NULL_HANDLE;
 
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Quad_UL_INV.bil", &vs);
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Copy_Images.bil", &fs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Quad_UL_INV.spv", &vs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Copy_Images.spv", &fs);
 
     if (vs == VK_NULL_HANDLE || fs == VK_NULL_HANDLE)
     {
@@ -1490,8 +1490,8 @@ static int Create_Graph_Pipeline(VkPrimitiveTopology topology, VkPipeline *pipe)
     vs = VK_NULL_HANDLE;
     fs = VK_NULL_HANDLE;
 
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Graph.bil", &vs);
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Graph.bil", &fs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Graph.spv", &vs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Graph.spv", &fs);
 
     if (vs == VK_NULL_HANDLE || fs == VK_NULL_HANDLE)
     {
@@ -2652,8 +2652,8 @@ static int Create_Font_Pipeline(void)
     vs = VK_NULL_HANDLE;
     fs = VK_NULL_HANDLE;
 
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Font.bil", &vs);
-    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Font.bil", &fs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/VS_Font.spv", &vs);
+    VKU_Load_Shader(s_gpu_device, "Data/Shader_GLSL/FS_Font.spv", &fs);
 
     if (vs == VK_NULL_HANDLE || fs == VK_NULL_HANDLE) {
         VKU_DESTROY(vkDestroyShaderModule, vs);
