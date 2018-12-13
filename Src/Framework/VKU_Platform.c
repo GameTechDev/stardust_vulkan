@@ -115,7 +115,7 @@ static int Init_Instance(void)
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.pEngineName        = "Starduster1";
     app_info.engineVersion      = VK_MAKE_VERSION(1, 1, 0);
-    app_info.apiVersion         = VK_VERSION_1_0;
+    app_info.apiVersion         = VK_API_VERSION_1_0;
 
     const char* wsi_extensions[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
@@ -146,12 +146,26 @@ static int Init_Device(void)
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 
+    uint32_t queuesCount;
+    vkGetPhysicalDeviceQueueFamilyProperties(s_gpu, &queuesCount, NULL);
+
+    VkQueueFamilyProperties *queueFamilyProperties =
+        (VkQueueFamilyProperties*)malloc(sizeof(VkQueueFamilyProperties) * queuesCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(s_gpu, &queuesCount, queueFamilyProperties);
+
+    for (uint32_t i = 0; i < queuesCount; i++) {
+        if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 &&
+            (queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) != 0)
+            s_queue_family_index = i;
+    }
+
+
     float queuePriority = 1.0f;
     VkDeviceQueueCreateInfo queue_info;
-    queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queue_info.pNext = NULL;
     queue_info.flags = 0;
-    queue_info.queueFamilyIndex = 0;
+    queue_info.queueFamilyIndex = s_queue_family_index;
     queue_info.queueCount = 1;
     queue_info.pQueuePriorities = &queuePriority;
 
@@ -168,19 +182,6 @@ static int Init_Device(void)
     device_info.pEnabledFeatures            = NULL;
 
     VKU_VR(vkCreateDevice(s_gpu, &device_info, NO_ALLOC_CALLBACK, &s_device));
-
-    uint32_t queuesCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(s_gpu, &queuesCount, NULL);
-
-    VkQueueFamilyProperties *queueFamilyProperties =
-        (VkQueueFamilyProperties*)malloc(sizeof(VkQueueFamilyProperties) * queuesCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(s_gpu, &queuesCount, queueFamilyProperties);
-
-    for (uint32_t i = 0; i < queuesCount; i++) {
-        if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 &&
-            (queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) != 0)
-            s_queue_family_index = i;
-    }
 
     return 1;
 }
