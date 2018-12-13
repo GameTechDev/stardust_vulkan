@@ -14,22 +14,26 @@
 // limitations under the License.
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(_VK_NO_INIT_FUNCTIONS)
+#if defined(_VK_GLOBAL_FUNCTIONS) || defined(_VK_ALL_FUNCTIONS)
 VK_FUNCTION(vkCreateInstance);
+VK_FUNCTION(vkEnumerateInstanceExtensionProperties);
+VK_FUNCTION(vkEnumerateInstanceLayerProperties);
 VK_FUNCTION(vkDestroyInstance);
+VK_FUNCTION(vkGetInstanceProcAddr);
+#endif
+
+#if defined(_VK_INSTANCE_FUNCTIONS) || defined(_VK_ALL_FUNCTIONS)
 VK_FUNCTION(vkEnumeratePhysicalDevices);
 VK_FUNCTION(vkGetPhysicalDeviceFeatures);
 VK_FUNCTION(vkGetPhysicalDeviceFormatProperties);
 VK_FUNCTION(vkGetPhysicalDeviceProperties);
 VK_FUNCTION(vkGetPhysicalDeviceQueueFamilyProperties);
 VK_FUNCTION(vkGetPhysicalDeviceMemoryProperties);
-VK_FUNCTION(vkGetInstanceProcAddr);
 VK_FUNCTION(vkGetDeviceProcAddr);
 VK_FUNCTION(vkCreateDevice);
 VK_FUNCTION(vkDestroyDevice);
-VK_FUNCTION(vkEnumerateInstanceExtensionProperties);
+
 VK_FUNCTION(vkEnumerateDeviceExtensionProperties);
-VK_FUNCTION(vkEnumerateInstanceLayerProperties);
 VK_FUNCTION(vkEnumerateDeviceLayerProperties);
 
 // VK_KHR_surface
@@ -57,7 +61,7 @@ VK_FUNCTION(vkCreateAndroidSurfaceKHR);
 #endif
 #endif
 
-#if !defined(_VK_NO_DEVICE_FUNCTIONS)
+#if defined(_VK_DEVICE_FUNCTIONS) || defined(_VK_ALL_FUNCTIONS)
 VK_FUNCTION(vkGetDeviceQueue);
 VK_FUNCTION(vkQueueSubmit);
 VK_FUNCTION(vkQueueWaitIdle);

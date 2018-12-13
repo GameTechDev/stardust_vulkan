@@ -110,9 +110,18 @@ int VKU_Alloc_Image_Object(VKU_IMAGE_MEMORY_POOL *objpool,
 int VKU_Load_Shader(VkDevice        device,
                     const char      *filename,
                     VkShaderModule  *shaderModule);
+
+int VK__Load_Global_Api(void *(*Loader)(const char *));
+
+int VK__Load_Device_Api(VkDevice device);
+
+int VK__Load_Instance_Api(VkInstance instance);
+
 //=============================================================================
 // GPU initialization
 #define VK_FUNCTION(func) extern PFN_##func func
+#define _VK_ALL_FUNCTIONS
 #include "vkFuncList.h"
+#undef _VK_ALL_FUNCTIONS
 #undef VK_FUNCTION
 //=============================================================================

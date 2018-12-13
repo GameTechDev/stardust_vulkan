@@ -240,28 +240,38 @@ int VKU_Load_Shader(VkDevice device,
 //=============================================================================
 // Define function pointers
 #define VK_FUNCTION(func) PFN_##func func = NULL
+#define _VK_ALL_FUNCTIONS
 #include "vkFuncList.h"
+#undef _VK_ALL_FUNCTIONS
 #undef VK_FUNCTION
 //=============================================================================
-int VK__Load_Api(void *(*Loader)(const char *))
+int VK__Load_Global_Api(void *(*Loader)(const char *))
 {
     // Load function pointers
 #define VK_FUNCTION(func) if (!(func = (PFN_##func)Loader(#func))) { LOG_AND_RETURN0(); }
-#define _VK_NO_INIT_FUNCTIONS
+#define _VK_GLOBAL_FUNCTIONS
 #include "vkFuncList.h"
-#undef _VK_NO_INIT_FUNCTIONS
+#undef _VK_GLOBAL_FUNCTIONS
 #undef VK_FUNCTION
     return 1;
 }
-//=============================================================================
-int VK__Load_Init_Api(void *(*Loader)(const char *))
+int VK__Load_Instance_Api(VkInstance instance)
 {
     // Load function pointers
-#define VK_FUNCTION(func) if (!(func = (PFN_##func)Loader(#func))) { LOG_AND_RETURN0(); }
-#define _VK_NO_DEVICE_FUNCTIONS
+#define VK_FUNCTION(func) if (!(func = (PFN_##func)vkGetInstanceProcAddr(instance, #func))) { LOG_AND_RETURN0(); }
+#define _VK_INSTANCE_FUNCTIONS
 #include "vkFuncList.h"
-#undef _VK_NO_DEVICE_FUNCTIONS
+#undef _VK_INSTANCE_FUNCTIONS
 #undef VK_FUNCTION
     return 1;
 }
-//=============================================================================
+int VK__Load_Device_Api(VkDevice device)
+{
+    // Load function pointers
+#define VK_FUNCTION(func) if (!(func = (PFN_##func)vkGetDeviceProcAddr(device, #func))) { LOG_AND_RETURN0(); }
+#define _VK_DEVICE_FUNCTIONS
+#include "vkFuncList.h"
+#undef _VK_DEVICE_FUNCTIONS
+#undef VK_FUNCTION
+    return 1;
+}

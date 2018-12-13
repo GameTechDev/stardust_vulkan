@@ -26,10 +26,10 @@
 //=============================================================================
 typedef void               *(*PFNLoader)(const char *func);
 static void                *Loader(const char *func);
-static void                *VKLoader(const char *func);
 static int                 Load_WsiWin_Entry_Points(PFNLoader);
 static int                 Init(void *hwnd, int width, int height, VkBool32 windowed, uint32_t image_count, VkImage *images);
 static void                Deinit(void);
+static int                 Init_Instance(void);
 static int                 Init_Device(void);
 static int                 Init_Framebuffer(void *hwnd, int width, int height, VkBool32 windowed,
                                             uint32_t image_count, VkImage *images);
@@ -52,14 +52,6 @@ static void *Loader(const char *func)
     return GetProcAddress(s_vk_dll, func);
 #endif
 }
-//-----------------------------------------------------------------------------
-static void *VKLoader(const char *func)
-{
-    if (vkGetDeviceProcAddr == NULL || s_device == VK_NULL_HANDLE) {
-        return Loader(func);
-    }
-    return vkGetDeviceProcAddr(s_device, func);
-}
 //=============================================================================
 static int Init(void *hwnd, int width, int height, VkBool32 windowed,
                 uint32_t image_count, VkImage *images)
@@ -74,11 +66,11 @@ static int Init(void *hwnd, int width, int height, VkBool32 windowed,
 #endif
     if (!s_vk_dll) return 0;
 
-    int VK__Load_Api(void *(*)(const char *));
-    int VK__Load_Init_Api(void *(*)(const char *));
-    if (!VK__Load_Init_Api(VKLoader)) return 0;
+    if (!VK__Load_Global_Api(Loader)) return 0;
+    if (!Init_Instance()) return 0;
+    if (!VK__Load_Instance_Api(s_instance)) return 0;
     if (!Init_Device()) return 0;
-    if (!VK__Load_Api(VKLoader)) return 0;
+    if (!VK__Load_Device_Api(s_device)) return 0;
 
     vkGetDeviceQueue(s_device, s_queue_family_index, 0, &s_queue);
 
@@ -114,7 +106,7 @@ static void Deinit(void)
     }
 }
 //=============================================================================
-static int Init_Device(void)
+static int Init_Instance(void)
 {
     VkApplicationInfo app_info  = { 0 };
     app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -141,6 +133,11 @@ static int Init_Device(void)
     instance_info.ppEnabledExtensionNames = wsi_extensions;
 
     VKU_VR(vkCreateInstance(&instance_info, NO_ALLOC_CALLBACK, &s_instance));
+    return 1;
+}
+//=============================================================================
+static int Init_Device(void)
+{
 
     uint32_t count = 1;
     VKU_VR(vkEnumeratePhysicalDevices(s_instance, &count, &s_gpu));
