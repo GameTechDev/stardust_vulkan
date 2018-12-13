@@ -1268,6 +1268,10 @@ static int Create_Display_Pipeline(void)
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         NULL, 0, VK_SHADER_STAGE_FRAGMENT_BIT, fs, "main", NULL
     };
+    VkPipelineVertexInputStateCreateInfo vf_info = {
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, NULL, 0,
+        0, NULL, 0, NULL
+    };
     VkPipelineInputAssemblyStateCreateInfo ia_info = {
         VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, NULL, 0,
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_FALSE
@@ -1311,7 +1315,7 @@ static int Create_Display_Pipeline(void)
 
     VkGraphicsPipelineCreateInfo pi_info = {
         VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, NULL, 0, 2, shader_stage_infos,
-        NULL, &ia_info, &tess_info, &vp_info, &rs_info, &ms_info, &db_info, &cb_info,
+        &vf_info, &ia_info, &tess_info, &vp_info, &rs_info, &ms_info, &db_info, &cb_info,
         NULL, s_common_pipeline_layout, s_win_renderpass, 0, VK_NULL_HANDLE, 0
     };
 
@@ -1407,6 +1411,10 @@ static int Create_Copy_Pipeline(void)
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         NULL, 0, VK_SHADER_STAGE_FRAGMENT_BIT, fs, "main", NULL
     };
+    VkPipelineVertexInputStateCreateInfo vf_info = {
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, NULL, 0,
+        0, NULL, 0, NULL
+    };
     VkPipelineInputAssemblyStateCreateInfo ia_info = {
         VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, NULL, 0,
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_FALSE
@@ -1480,7 +1488,7 @@ static int Create_Copy_Pipeline(void)
 
     VkGraphicsPipelineCreateInfo pi_info = {
         VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, NULL, 0, 2, shader_stage_infos,
-        NULL, &ia_info, &tess_info, &vp_info, &rs_info, &ms_info, &db_info, &cb_info,
+        &vf_info, &ia_info, &tess_info, &vp_info, &rs_info, &ms_info, &db_info, &cb_info,
         &ds_info, s_common_pipeline_layout, s_copy_renderpass, 0, VK_NULL_HANDLE, 0
     };
 
@@ -2572,14 +2580,14 @@ static void Graph_Draw(GRAPH *graph, VkCommandBuffer cmdbuf)
     rpBegin.clearValueCount = 2;
     rpBegin.pClearValues = &clear_color;
     vkCmdBeginRenderPass(cmdbuf, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
-
-    vkCmdSetViewport(cmdbuf, 0, graph->viewport.viewportCount, &graph->viewport.viewport);
-    vkCmdSetScissor(cmdbuf, 0, graph->viewport.scissorCount, &graph->viewport.scissors);
-
     VkDeviceSize offset = 0;
 
     if (graph->draw_background) {
         vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s_graph_tri_strip_pipe);
+
+        vkCmdSetViewport(cmdbuf, 0, graph->viewport.viewportCount, &graph->viewport.viewport);
+        vkCmdSetScissor(cmdbuf, 0, graph->viewport.scissorCount, &graph->viewport.scissors);
+
         vkCmdBindVertexBuffers(cmdbuf, 0, 1, &s_graph_buffer[s_res_idx], &offset);
         vkCmdBindVertexBuffers(cmdbuf, 1, 1, &s_graph_buffer[s_res_idx], &offset);
         vkCmdDraw(cmdbuf, 4, 1, 0, 0);
@@ -2592,6 +2600,10 @@ static void Graph_Draw(GRAPH *graph, VkCommandBuffer cmdbuf)
 
     // fill
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s_graph_tri_strip_pipe);
+
+    vkCmdSetViewport(cmdbuf, 0, graph->viewport.viewportCount, &graph->viewport.viewport);
+    vkCmdSetScissor(cmdbuf, 0, graph->viewport.scissorCount, &graph->viewport.scissors);
+
     vkCmdBindVertexBuffers(cmdbuf, 0, 1, &graph->buffer[s_res_idx], &offset);
     vkCmdBindVertexBuffers(cmdbuf, 1, 1, &graph->buffer[s_res_idx], &offset);
     vkCmdDraw(cmdbuf, k_Graph_Samples * 2, 1, 0, 0);
