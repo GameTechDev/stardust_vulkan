@@ -106,7 +106,7 @@ int VKU_Alloc_Buffer_Object(VKU_BUFFER_MEMORY_POOL *objpool,
 int VKU_Alloc_Image_Object(VKU_IMAGE_MEMORY_POOL *objpool,
                            VkImage               image,
                            VkDeviceSize          *offset,
-						   uint32_t              memtypeindex);
+                           uint32_t              memtypeindex);
 
 
 int VKU_Load_Shader(VkDevice        device,

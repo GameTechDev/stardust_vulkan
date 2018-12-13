@@ -380,7 +380,7 @@ void VKU_Quit(void)
 //-----------------------------------------------------------------------------
 int VKU_Present(uint32_t *image_indice)
 {
-	VkResult result[1] = { 0 };
+    VkResult result[1] = { 0 };
     VkPresentInfoKHR present_info = { 0 };
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.pNext = NULL;
