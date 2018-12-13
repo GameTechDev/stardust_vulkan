@@ -1202,19 +1202,8 @@ static int Create_Display_Renderpass(void)
     color_attachment_desc.initialLayout = layout;
     color_attachment_desc.finalLayout = layout;
 
-    VkAttachmentDescription ds_attachment_desc;
-    ds_attachment_desc.flags = 0;
-    ds_attachment_desc.format = VK_FORMAT_D24_UNORM_S8_UINT;
-    ds_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
-    ds_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    ds_attachment_desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    ds_attachment_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    ds_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    ds_attachment_desc.initialLayout = layout;
-    ds_attachment_desc.finalLayout = layout;
 
     VkAttachmentReference color_attachment_ref = { 0, layout };
-    VkAttachmentReference ds_attachment_ref = { 1, layout };
 
     VkSubpassDescription subpass_desc;
     subpass_desc.flags = 0;
@@ -1224,19 +1213,17 @@ static int Create_Display_Renderpass(void)
     subpass_desc.colorAttachmentCount = 1;
     subpass_desc.pColorAttachments = &color_attachment_ref;
     subpass_desc.pResolveAttachments = NULL;
-    subpass_desc.pDepthStencilAttachment = &ds_attachment_ref;
+    subpass_desc.pDepthStencilAttachment = NULL;
     subpass_desc.preserveAttachmentCount = 0;
     subpass_desc.pPreserveAttachments = NULL;
 
-    VkAttachmentDescription attachment_descs[2];
-    attachment_descs[0] = color_attachment_desc;
-    attachment_descs[1] = ds_attachment_desc;
+    VkAttachmentDescription attachment_descs[] = { color_attachment_desc };
 
     VkRenderPassCreateInfo render_info;
     render_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     render_info.pNext = NULL;
     render_info.flags = 0;
-    render_info.attachmentCount = 2;
+    render_info.attachmentCount = 1;
     render_info.pAttachments = attachment_descs;
     render_info.subpassCount = 1;
     render_info.pSubpasses = &subpass_desc;
@@ -1692,13 +1679,11 @@ static int Create_Window_Framebuffer(void)
         };
         VKU_VR(vkCreateImageView(s_gpu_device, &view_info, NO_ALLOC_CALLBACK, &s_win_image_view[i]));
 
-        VkImageView view_infos[2];
-        view_infos[0] = s_win_image_view[i];
-        view_infos[1] = s_depth_stencil_view;
+        VkImageView view_infos[] = { s_win_image_view[i] };
 
         VkFramebufferCreateInfo fb_info = {
             VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, NULL, 0, s_win_renderpass,
-            2, view_infos, s_glob_state->width, s_glob_state->height, 1
+            1, view_infos, s_glob_state->width, s_glob_state->height, 1
         };
         VKU_VR(vkCreateFramebuffer(s_gpu_device, &fb_info, NO_ALLOC_CALLBACK, &s_win_framebuffer[i]));
     }
