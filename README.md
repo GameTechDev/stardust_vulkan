@@ -1,3 +1,7 @@
+# DISCONTINUATION OF PROJECT #
+This project will no longer be maintained by Intel.
+Intel has ceased development and contributions including, but not limited to, maintenance, bug fixes, new releases, or updates, to this project.
+Intel no longer accepts patches to this project.
 # Stardust
 
 The Stardust sample application uses the Vulkan graphics API to efficiently render a cloud of animated particles. To highlight Vulkan’s low CPU overhead and multithreading capabilities, particles are rendered using 200,000 draw calls. The demo is not using instancing; each draw call uses different region of a vertex buffer so that each draw could be a unique piece of geometry. Furthermore, all CPU cores are used for draw call preparation to ensure that graphics commands are generated and delivered to the GPU as fast as possible. The per-core CPU load graph is displayed in the upper-right corner.
